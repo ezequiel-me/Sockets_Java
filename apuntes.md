@@ -235,44 +235,6 @@ public class ClienteUDP{
 - **UDP:**
     - No hay conexión(**receive()**), orden no garantizado, puede haber perdidas, más rápido.
 
-### Envío de objetos con TCP y UDP
-- **TCP:**
-    - **Clases:**
-    **ObjectInputStream**
-    **ObjectOutPutStrema**
-    - **Requisitos:** implements Serializable
-    - **Proceso**
-    Crear objeto.
-    Enviar con writeObject.
-    Recibir con readObject.
-- **UDP:**
-- UDP no envía objetos directamente.
-    - **Se usan:**
-        - ByteArrayOutputStream
-        - ByteArrayInputStream
-        - ObjectOutputStream
-        - ObjectInputStream
-    - **Proceso:**
-    Convertir objeto a bytes
-    Enviar bytes
-    Reconstruir objeto
-
-### Uso de multicast
-**¿Qué es multicast?**
-Nos permite enviar un mensaje a muchos receptores
-- **Caracteristicas:**
-    - IP de clase D (224.0.0.0 a 239.255.255.255)
-    - Puerto UDP común
-    - El emisor no conoce los receptores
-- **Clases:**
-    - **MulticastSocket:**
-        - Metodos:
-        **joinGroup()**
-        **leaveGroup()**
-        **send()**
-        **receive()**
-        - Usos: chats, avisos, mensajes de difusión...
-
 
 ### Ejercicios de Refuerzos.
 #### 1. Cliente TCP envía texto, Servidor lo devuelve en mayúsculas.
@@ -568,9 +530,279 @@ public class ServidorUDP {
 }
 ```
 
+### Envío de objetos con TCP y UDP
+- **TCP:**
+    - **Clases:**
+    **ObjectInputStream**
+    **ObjectOutPutStrema**
+    - **Requisitos:** implements Serializable
+    - **Proceso**
+    Crear objeto.
+    Enviar con writeObject.
+    Recibir con readObject.
+- **UDP:**
+- UDP no envía objetos directamente.
+    - **Se usan:**
+        - ByteArrayOutputStream
+        - ByteArrayInputStream
+        - ObjectOutputStream
+        - ObjectInputStream
+    - **Proceso:**
+    Convertir objeto a bytes
+    Enviar bytes
+    Reconstruir objeto
 
-### Envío de objetos TCP y UDP:
-**TCP:**
+
+### Ejemplos de envío de objetos con TCP y UDP
+**TCP:** Enviar objetos a través de la red.
+- **Pasos:**
+    - Definir la clase modelo con la interfaz **Serializable**
+    ```java
+        public class Persona implements Serializable {
+            private String nombre;
+            private int edad;
+
+            public Persona(String nombre, int edad) {
+                this.nombre = nombre;
+                this.edad = edad;
+            }
+
+            public String getNombre() {
+                return nombre;
+            }
+
+            public void setNombre(String nombre) {
+                this.nombre = nombre;
+            }
+
+            public int getEdad() {
+                return edad;
+            }
+
+            public void setEdad(int edad) {
+                this.edad = edad;
+            }
+        }
+    ```
+    - Crear **ServidorTCP**
+    ```java
+        import java.net.*;
+        import java.io.*;
+        public class ServidorObjetoTCP {
+            public static void main(String[] args)
+            throws IOException, ClassNotFoundException {
+                ServerSocket servidor = new ServerSocket(6000);
+                System.out.println("Servidor esperando cliente...");
+                Socket cliente = servidor.accept();
+                ObjectOutputStream salidaObjeto =
+                new ObjectOutputStream(cliente.getOutputStream());
+                Persona p = new Persona("Juan", 30);
+                salidaObjeto.writeObject(p);
+                ObjectInputStream entradaObjeto =
+                new ObjectInputStream(cliente.getInputStream());
+                Persona pModificada = (Persona) entradaObjeto.readObject();
+                System.out.println("Objeto recibido de vuelta:");
+                System.out.println("Nombre: " + pModificada.getNombre());
+                System.out.println("Edad: " + pModificada.getEdad());
+                salidaObjeto.close();
+                entradaObjeto.close();
+                cliente.close();
+                servidor.close();
+            }
+        }
+    ```
+    - **Crear clienteTPC:**
+        ```java
+            import java.net.*;
+            import java.io.*;
+            public class ClienteObjetoTCP {
+                public static void main(String[] args)
+                throws IOException, ClassNotFoundException {
+                    Socket cliente = new Socket("localhost", 6000);
+                    ObjectInputStream entradaObjeto =
+                    new ObjectInputStream(cliente.getInputStream());
+                    Persona p = (Persona) entradaObjeto.readObject();
+                    System.out.println("Objeto recibido:");
+                    System.out.println(p.getNombre() + " - " + p.getEdad());
+                    p.setNombre("Juan el Cliente");
+                    p.setEdad(20);
+                    ObjectOutputStream salidaObjeto =
+                    new ObjectOutputStream(cliente.getOutputStream());
+                    salidaObjeto.writeObject(p);
+                    entradaObjeto.close();
+                    salidaObjeto.close();
+                    cliente.close();
+                }
+            }   
+        ```
+**UDP:** Enviar objetos convirtiendolos primeros a bytes.
+- **Pasos:**
+    - Convertir objeto a bytes (emisor):
+    ```java
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(persona);
+        byte[] datos = baos.toByteArray();
+    ```
+    - Reconstruir objeto desde bytes (receptor):
+    ```java
+        ByteArrayInputStream bais = new ByteArrayInputStream(datos);
+        ObjectInputStream ois = new ObjectInputStream(bais);
+        Persona persona = (Persona) ois.readObject();
+    ```
+    - **Ejercicio:** implementa un cliente UDP que envie un objeto Persona, implementa un servidor que reciba los datos y reconstruya el objeto y muestro los datos por consola.
+        - **ClienteUDP.java:**
+        ```java
+            import java.io.*;
+            import java.net.*;
+
+            public class ClienteUDP {
+                public static void main(String[] args) {
+                    int puerto = 6000;
+                    try (DatagramSocket socketUDP = new DatagramSocket()) {
+                        InetAddress hostServidor = InetAddress.getByName("localhost");
+
+                        // 1. Crear el objeto
+                        Persona p = new Persona("Juanito", 25);
+
+                        // 2. Serializar: Convertir Objeto -> Bytes
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ObjectOutputStream oos = new ObjectOutputStream(baos);
+                        oos.writeObject(p);
+                        byte[] buffer = baos.toByteArray(); // Aquí tenemos nuestros bytes
+
+                        // 3. Enviar el paquete
+                        DatagramPacket peticion = new DatagramPacket(buffer, buffer.length, hostServidor, puerto);
+                        socketUDP.send(peticion);
+                        
+                        System.out.println("Objeto enviado al servidor.");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        ```
+        - **ServidorUDP.java:**
+        ```java
+            import java.io.*;
+            import java.net.*;
+
+            public class ServidorUDP {
+                public static void main(String[] args) {
+                    int puerto = 6000;
+                    byte[] buffer = new byte[1024]; // El buffer que explicamos antes
+
+                    try (DatagramSocket socketUDP = new DatagramSocket(puerto)) {
+                        System.out.println("Servidor UDP esperando objeto Persona...");
+
+                        while (true) {
+                            // 1. Recibir el paquete
+                            DatagramPacket recibo = new DatagramPacket(buffer, buffer.length);
+                            socketUDP.receive(recibo);
+
+                            // 2. Deserializar: Convertir Bytes -> Objeto
+                            ByteArrayInputStream bais = new ByteArrayInputStream(buffer);
+                            ObjectInputStream ois = new ObjectInputStream(bais);
+                            
+                            Persona p = (Persona) ois.readObject();
+
+                            // 3. Mostrar datos
+                            System.out.println("Objeto recibido con éxito:");
+                            System.out.println(p.toString());
+                        }
+                    } catch (IOException | ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        ```
+        - **Persona.java:**
+        ```java
+            import java.io.Serializable;
+            public class Persona implements Serializable {
+                private static final long serialVersionUID = 1L; // Buena práctica para serialización
+                private String nombre;
+                private int edad;
+
+                public Persona(String nombre, int edad) {
+                    this.nombre = nombre;
+                    this.edad = edad;
+                }
+
+                @Override
+                public String toString() {
+                    return "Persona{nombre='" + nombre + "', edad=" + edad + "}";
+                }
+            }
+        ```
+
+### Uso de multicast
+**¿Qué es multicast?**
+Nos permite enviar un mensaje a muchos receptores
+- **Caracteristicas:**
+    - IP de clase D (224.0.0.0 a 239.255.255.255)
+    - Puerto UDP común
+    - El emisor no conoce los receptores
+- **Clases:**
+    - **MulticastSocket:**
+        - Metodos:
+        **joinGroup()**
+        **leaveGroup()**
+        **send()**
+        **receive()**
+        - Usos: chats, avisos, mensajes de difusión...
+
+#### Ejercicio con multicast:
+- **Pasos:**
+    - Definir los datos del grupo **multicast**:
+        - **IP y puerto.**
+    - Definir el servidor multicast (emisor):
+    ```java
+        import java.net.*;
+        public class ServidorMulticast {
+            public static void main(String[] args) throws Exception {
+                MulticastSocket socket = new MulticastSocket();
+                InetAddress grupo = InetAddress.getByName("225.0.0.1");
+                int puerto = 7000;
+                String mensaje = "Mensaje multicast de prueba";
+                byte[] datos = mensaje.getBytes();
+                DatagramPacket paquete =
+                new DatagramPacket(datos, datos.length, grupo, puerto);
+                socket.send(paquete);
+                socket.close();
+            }
+        }
+    ```
+    - Definir el cliente multicast (receptor):
+    ```java
+        import java.net.*;
+        public class ClienteMulticast {
+            public static void main(String[] args) throws Exception {
+                MulticastSocket socket = new MulticastSocket(7000);
+                InetAddress grupo = InetAddress.getByName("225.0.0.1");
+                socket.joinGroup(grupo);
+                byte[] buffer = new byte[1024];
+                DatagramPacket paquete =
+                new DatagramPacket(buffer, buffer.length);
+                socket.receive(paquete);
+                String mensaje =
+                new String(paquete.getData(), 0, paquete.getLength());
+                System.out.println("Mensaje recibido: " + mensaje);
+                socket.leaveGroup(grupo);
+                socket.close();
+            }
+        }
+    ```
+#### Ejercicio práctico con multicast:
+**Enunciado:** crear un servidor que envie mensajes a un grupo, unir los clientes al grupo, que reciban mensajes continuamente y que lo impriman por la terminal. El proceso termina cuando se escriba un mensaje como "YA".
+- **ServidorMultiCast.java**
+```java
 
 
-**UDP:**
+```
+- **ClienteMultiCast.java**
+```java
+
+
+```
+
