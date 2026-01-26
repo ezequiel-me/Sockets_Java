@@ -795,14 +795,84 @@ Nos permite enviar un mensaje a muchos receptores
     ```
 #### Ejercicio práctico con multicast:
 **Enunciado:** crear un servidor que envie mensajes a un grupo, unir los clientes al grupo, que reciban mensajes continuamente y que lo impriman por la terminal. El proceso termina cuando se escriba un mensaje como "YA".
-- **ServidorMultiCast.java**
+- **ServidorMultiCast.java** (emisor)
 ```java
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.Scanner;
 
+public class ServidorMulticast {
+    public static void main(String[] args) {
+        String groupIP = "224.0.0.1";
+        int port = 5000;
 
+        try (DatagramSocket socket = new DatagramSocket();
+             Scanner sc = new Scanner(System.in)) {
+            
+            InetAddress group = InetAddress.getByName(groupIP);
+            System.out.println("Servidor iniciado. Escriba mensajes (o 'YA' para salir):");
+
+            while (true) {
+                String msg = sc.nextLine();
+                byte[] buffer = msg.getBytes();
+
+                // Creamos el paquete dirigido al grupo
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length, group, port);
+                socket.send(packet);
+
+                if (msg.equalsIgnoreCase("YA")) {
+                    System.out.println("Cerrando servidor...");
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 ```
-- **ClienteMultiCast.java**
+- **ClienteMultiCast.java** (receptor)
 ```java
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 
+public class ClienteMulticast {
+    public static void main(String[] args) {
+        String groupIP = "224.0.0.1";
+        int port = 5000;
 
+        // Usamos MulticastSocket para poder unirnos al grupo
+        try (MulticastSocket socket = new MulticastSocket(port)) {
+            InetAddress group = InetAddress.getByName(groupIP);
+            InetSocketAddress groupAddress = new InetSocketAddress(group, port);
+            NetworkInterface netIf = NetworkInterface.getByInetAddress(InetAddress.getLocalHost());
+
+            // Unirse al grupo
+            socket.joinGroup(groupAddress, netIf);
+            System.out.println("Unido al grupo: " + groupIP + ". Esperando mensajes...");
+
+            byte[] buffer = new byte[1024];
+            while (true) {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet); // Se bloquea hasta recibir algo
+
+                String received = new String(packet.getData(), 0, packet.getLength());
+                System.out.println("Mensaje recibido: " + received);
+
+                if (received.equalsIgnoreCase("YA")) {
+                    System.out.println("Comando 'YA' recibido. Saliendo...");
+                    socket.leaveGroup(groupAddress, netIf);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 ```
 
