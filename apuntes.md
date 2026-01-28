@@ -185,7 +185,7 @@ public class ClienteUDP{
 
     public static void main(Strings[] args){
         try{
-            // Definimos el punto esde donde vamos a enviar nuestro mensaje/paquete.
+            // Definimos el punto desde donde vamos a enviar nuestro mensaje/paquete.
             DatagramSocket socket = new DatagramSocket();
 
             // Definimos un mensaje para enviar al servidor UDP.
@@ -611,7 +611,7 @@ public class ServidorUDP {
             }
         }
     ```
-    - **Crear clienteTPC:**
+    - **Crear clienteTCP:**
         ```java
             import java.net.*;
             import java.io.*;
