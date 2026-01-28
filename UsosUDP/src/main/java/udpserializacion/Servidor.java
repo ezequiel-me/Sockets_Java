@@ -58,7 +58,7 @@ public class Servidor {
                 ObjectInputStream objIS = new ObjectInputStream(byteArrIS);
                 Mensaje mensaje = (Mensaje) objIS.readObject();
                 System.out.println("[Servidor]> Objeto Recibido");
-                System.out.println("[Servidor]> "+mensaje.getMensaje() + " || " + mensaje.getCodif());
+                System.out.println("[Cliente]> "+mensaje.getMensaje() + " || " + mensaje.getCodif());
 
 
                 ByteArrayOutputStream byteArrOUS = new ByteArrayOutputStream();
